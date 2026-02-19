@@ -38,17 +38,24 @@ setInterval(() => {
   client.guilds.cache.forEach(guild => {
     guild.channels.cache.forEach(channel => {
       if (!channel.isTextBased()) return;
-      if (activeSpawns.has(channel.id)) return;
 
       const pokemon = getRandomPokemon();
       const isShiny = require("./utils/isShiny")();
 
-   activeSpawns.set(channel.id, {
-  ...pokemon,
-  shiny: isShiny,
-  revealedLetters: []
-});
+      if (!activeSpawns.has(channel.id)) {
+        activeSpawns.set(channel.id, []);
+      }
 
+      const channelSpawns = activeSpawns.get(channel.id);
+
+      const spawnData = {
+        ...pokemon,
+        shiny: isShiny,
+        revealedLetters: [],
+        spawnId: Date.now() + Math.random() // ID único
+      };
+
+      channelSpawns.push(spawnData);
 
       const image = isShiny
         ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${pokemon.id}.png`
@@ -60,9 +67,18 @@ setInterval(() => {
           : "🌿 **¡Un Pokémon salvaje apareció!**",
         files: [image],
       });
+
+      // 🔥 OPCIONAL: eliminar después de 2 minutos
+      setTimeout(() => {
+        const updatedSpawns = activeSpawns.get(channel.id) || [];
+        activeSpawns.set(
+          channel.id,
+          updatedSpawns.filter(p => p.spawnId !== spawnData.spawnId)
+        );
+      }, 120000); // 2 minutos
     });
   });
-}, 10000); // 30 segundos
+}, 15000);
 
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;

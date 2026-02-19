@@ -5,17 +5,24 @@ const isRare = require("../utils/isRare");
 
 module.exports = async (message, args, activeSpawns) => {
 
-    const spawn = activeSpawns.get(message.channel.id);
+    const channelSpawns = activeSpawns.get(message.channel.id);
 
-    if (!spawn) {
+    if (!channelSpawns || channelSpawns.length === 0) {
         return message.reply("❌ No hay ningún Pokémon para capturar.");
     }
 
     const guess = args.join(" ").toLowerCase();
 
-    if (guess !== spawn.name.toLowerCase()) {
+    // 🔎 Buscar el Pokémon correcto dentro del array
+    const spawnIndex = channelSpawns.findIndex(
+        p => p.name.toLowerCase() === guess
+    );
+
+    if (spawnIndex === -1) {
         return message.reply("❌ Ese no es el Pokémon correcto.");
     }
+
+    const spawn = channelSpawns[spawnIndex];
 
     const level = Math.floor(Math.random() * 40) + 1;
     const gender = Math.random() < 0.5 ? "♂" : "♀";
@@ -57,50 +64,42 @@ module.exports = async (message, args, activeSpawns) => {
 
     const account = await getUserAccount(message.author.id);
 
-    // 🔄 Reset automático si corresponde
     await checkMissionReset(account);
 
-    // 💰 Recompensa base
     const reward = spawn.shiny ? 500 : 50;
     account.balance += reward;
 
     // ================================
-    // 🎯 SISTEMA DE MISIONES ARREGLADO
+    // 🎯 SISTEMA DE MISIONES
     // ================================
 
     if (account.missions && account.missions.length > 0) {
 
         for (let mission of account.missions) {
 
-            // 🔒 Si ya está completada NO se puede volver a completar
             if (mission.completed) continue;
 
             let progressAdded = false;
 
-            // ✅ Catch normal
             if (mission.type === "catch") {
                 mission.progress += 1;
                 progressAdded = true;
             }
 
-            // ✅ Rare
             if (mission.type === "rare" && isRare(spawn.name)) {
                 mission.progress += 1;
                 progressAdded = true;
             }
 
-            // ✅ Shiny
             if (mission.type === "shiny" && spawn.shiny) {
                 mission.progress += 1;
                 progressAdded = true;
             }
 
-            // 🔒 Evita que sobrepase el target
             if (mission.progress > mission.target) {
                 mission.progress = mission.target;
             }
 
-            // 🎉 Completar misión SOLO si llegó exactamente al objetivo
             if (progressAdded && mission.progress >= mission.target && !mission.completed) {
 
                 mission.completed = true;
@@ -118,7 +117,14 @@ module.exports = async (message, args, activeSpawns) => {
 
     await account.save();
 
-    activeSpawns.delete(message.channel.id);
+    // 🗑 Eliminar SOLO el Pokémon capturado
+    channelSpawns.splice(spawnIndex, 1);
+
+    if (channelSpawns.length === 0) {
+        activeSpawns.delete(message.channel.id);
+    } else {
+        activeSpawns.set(message.channel.id, channelSpawns);
+    }
 
     message.channel.send(
         `🎉 **¡Felicidades ${message.author}!**\n` +
