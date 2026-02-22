@@ -9,7 +9,8 @@ const pokemonSchema = new mongoose.Schema({
   image: String,
   ivs: Object,
   stats: Object,
-  ivPercent: Number
+  ivPercent: Number,
+  pokemonId: Number
 });
 
 module.exports = mongoose.model("Pokemon", pokemonSchema);

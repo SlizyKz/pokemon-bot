@@ -11,7 +11,7 @@ module.exports = async (message) => {
 
   const pokemons = await Pokemon
     .find({ ownerId: message.author.id })
-    .sort({ _id: 1 });
+    .sort({ pokemonId: 1 });
 
   if (!pokemons.length) {
     return message.reply("❌ No tienes Pokémon capturados.");
@@ -22,21 +22,26 @@ module.exports = async (message) => {
   const totalPages = Math.ceil(pokemons.length / perPage);
 
   const generateEmbed = (page) => {
-    const start = page * perPage;
-    const current = pokemons.slice(start, start + perPage);
+  const start = page * perPage;
+  const current = pokemons.slice(start, start + perPage);
 
-    const description = current.map((p, index) => {
-      const shiny = p.shiny ? "✨" : "";
-      return `**${start + index + 1}.** ${shiny}${p.name} ${p.gender} | Nivel ${p.level} | ${p.ivPercent}%`;
-    }).join("\n");
+  const description = current.map((p) => {
+    const shiny = p.shiny ? "✨ " : "";
 
-    return new EmbedBuilder()
-      .setColor(0x5865F2)
-      .setTitle(`📦 Pokémon de ${message.author.username}`)
-      .setDescription(description)
-      .setFooter({ text: `Página ${page + 1} / ${totalPages}` })
-      .setTimestamp();
-  };
+    const name = p.name.toUpperCase(); // 🔥 MAYÚSCULAS
+    const level = p.level ? `Nv.${p.level}` : "Nv.?";
+    const ivPercent = p.ivPercent ? `${p.ivPercent}%` : "0%";
+
+    return `**${p.pokemonId}.** ${shiny}**${name}** | ${level} | IV: ${ivPercent}`;
+  }).join("\n");
+
+  return new EmbedBuilder()
+    .setColor(0x5865F2)
+    .setTitle(`📦 Pokémon de ${message.author.username}`)
+    .setDescription(description)
+    .setFooter({ text: `Página ${page + 1} / ${totalPages}` })
+    .setTimestamp();
+};
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()

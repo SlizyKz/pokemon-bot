@@ -149,12 +149,23 @@ module.exports = async (message, args) => {
       }
       ivPercent = randomPercent(75, 100);
     }
+    
+const lastPokemon = await Pokemon.findOne({
+  ownerId: message.author.id,
+  pokemonId: { $exists: true }
+}).sort({ pokemonId: -1 });
+
+const newPokemonId =
+  lastPokemon && !isNaN(lastPokemon.pokemonId)
+    ? lastPokemon.pokemonId + 1
+    : 1;
 
     // 🔥 NUEVO SISTEMA IVS
     const ivData = generateIVsFromPercent(ivPercent);
 
     await Pokemon.create({
       ownerId: message.author.id,
+      pokemonId: newPokemonId,
       name: spawn.name,
       level: Math.floor(Math.random() * 40) + 1,
       gender: Math.random() < 0.5 ? "♂" : "♀",

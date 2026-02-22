@@ -5,29 +5,56 @@ const isRare = require("../utils/isRare");
 
 module.exports = async (message, args, activeSpawns) => {
 
-    const channelSpawns = activeSpawns.get(message.channel.id);
+    const spawn = activeSpawns.get(message.channel.id);
 
-    if (!channelSpawns || channelSpawns.length === 0) {
+    if (!spawn) {
         return message.reply("❌ No hay ningún Pokémon para capturar.");
     }
 
     const guess = args.join(" ").toLowerCase();
 
-    // 🔎 Buscar el Pokémon correcto dentro del array
-    const spawnIndex = channelSpawns.findIndex(
-        p => p.name.toLowerCase() === guess
-    );
-
-    if (spawnIndex === -1) {
+    if (guess !== spawn.name.toLowerCase()) {
         return message.reply("❌ Ese no es el Pokémon correcto.");
     }
 
-    const spawn = channelSpawns[spawnIndex];
+    // 🔥 Eliminamos el spawn
+    activeSpawns.delete(message.channel.id);
 
-    const level = Math.floor(Math.random() * 40) + 1;
+    // =========================
+    // 🔥 GENERAR NUEVO pokemonId
+    // =========================
+
+    const lastPokemon = await Pokemon.findOne({
+        ownerId: message.author.id,
+        pokemonId: { $exists: true }
+    }).sort({ pokemonId: -1 });
+
+    const newPokemonId =
+        lastPokemon && !isNaN(lastPokemon.pokemonId)
+            ? lastPokemon.pokemonId + 1
+            : 1;
+
+    // =========================
+
+    const level = spawn.customLevel || (Math.floor(Math.random() * 40) + 1);
     const gender = Math.random() < 0.5 ? "♂" : "♀";
 
-    const ivs = {
+    // =========================
+// 🔥 IVs (Admin o Normal)
+// =========================
+
+let ivs;
+let ivPercent;
+
+if (spawn.customIVs && typeof spawn.customIVs === "object") {
+
+    // 🔥 Usar IVs personalizados del admin
+    ivs = spawn.customIVs;
+
+} else {
+
+    // 🔥 IVs aleatorios normales
+    ivs = {
         hp: Math.floor(Math.random() * 32),
         attack: Math.floor(Math.random() * 32),
         defense: Math.floor(Math.random() * 32),
@@ -35,38 +62,39 @@ module.exports = async (message, args, activeSpawns) => {
         spDefense: Math.floor(Math.random() * 32),
         speed: Math.floor(Math.random() * 32),
     };
+}
 
-    const totalIV =
-        ivs.hp +
-        ivs.attack +
-        ivs.defense +
-        ivs.spAttack +
-        ivs.spDefense +
-        ivs.speed;
+const totalIV =
+    ivs.hp +
+    ivs.attack +
+    ivs.defense +
+    ivs.spAttack +
+    ivs.spDefense +
+    ivs.speed;
 
-    const ivPercent = ((totalIV / 186) * 100).toFixed(2);
+ivPercent = ((totalIV / 186) * 100).toFixed(2);
 
     const image = spawn.shiny
         ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${spawn.id}.png`
         : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${spawn.id}.png`;
 
+    // 🔥 Ahora sí se guarda correctamente
     await Pokemon.create({
         ownerId: message.author.id,
+        pokemonId: newPokemonId,
         name: spawn.name,
-        level,
-        gender,
+        level: level,
+        gender: gender,
         shiny: spawn.shiny,
-        image,
-        ivs,
-        stats: spawn.baseStats,
-        ivPercent: parseFloat(ivPercent)
+        image: image,
+        ivs: ivs,
+        ivPercent: ivPercent
     });
 
     const account = await getUserAccount(message.author.id);
-
     await checkMissionReset(account);
 
-    const reward = spawn.shiny ? 500 : 50;
+    const reward = spawn.shiny ? 10000 : 100;
     account.balance += reward;
 
     // ================================
@@ -117,19 +145,10 @@ module.exports = async (message, args, activeSpawns) => {
 
     await account.save();
 
-    // 🗑 Eliminar SOLO el Pokémon capturado
-    channelSpawns.splice(spawnIndex, 1);
-
-    if (channelSpawns.length === 0) {
-        activeSpawns.delete(message.channel.id);
-    } else {
-        activeSpawns.set(message.channel.id, channelSpawns);
-    }
-
     message.channel.send(
         `🎉 **¡Felicidades ${message.author}!**\n` +
         `Has capturado un **Nivel ${level} ${spawn.shiny ? "✨" : ""}${spawn.name} ${gender}** ` +
         `(${ivPercent}%)\n\n` +
-        `💰 Has ganado ${reward} Pokécoins`
+        `💰 Has ganado ${reward.toLocaleString()} Pokécoins`
     );
 };

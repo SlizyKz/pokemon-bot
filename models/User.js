@@ -21,8 +21,12 @@ const userSchema = new mongoose.Schema({
     lastMissionReset: {
         type: Date,
         default: null
-    }
+    },
 
+    selectedPokemon: {
+  type: String,
+  default: null
+}
 });
 
 module.exports = mongoose.model("User", userSchema);

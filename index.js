@@ -1,5 +1,6 @@
 const getRandomPokemon = require("./utils/getRandomPokemon");
 const activeSpawns = new Map();
+const { EmbedBuilder } = require("discord.js");
 
 const catchCommand = require("./commands/catch");
 const pokemonCommand = require("./commands/pokemon");
@@ -11,6 +12,9 @@ const shopCommand = require("./commands/shop");
 const buyCommand = require("./commands/buy");
 const hintCommand = require("./commands/hint");
 const missionsCommand = require("./commands/missions");
+const findCommand = require("./commands/find");
+const marketCommand = require("./commands/market");
+const selectCommand = require("./commands/select");
 
 require("dotenv").config();
 const { Client, GatewayIntentBits } = require("discord.js");
@@ -42,40 +46,37 @@ setInterval(() => {
       const pokemon = getRandomPokemon();
       const isShiny = require("./utils/isShiny")();
 
-      if (!activeSpawns.has(channel.id)) {
-        activeSpawns.set(channel.id, []);
-      }
-
-      const channelSpawns = activeSpawns.get(channel.id);
-
       const spawnData = {
         ...pokemon,
         shiny: isShiny,
         revealedLetters: [],
-        spawnId: Date.now() + Math.random() // ID único
+        spawnId: Date.now() + Math.random()
       };
 
-      channelSpawns.push(spawnData);
+      // 🔥 SOLO UN SPAWN POR CANAL
+      activeSpawns.set(channel.id, spawnData);
 
       const image = isShiny
         ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${pokemon.id}.png`
         : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id}.png`;
 
-      channel.send({
-        content: isShiny
-          ? "✨ **¡Un Pokémon Shiny apareció!**"
-          : "🌿 **¡Un Pokémon salvaje apareció!**",
-        files: [image],
-      });
+      const embed = new EmbedBuilder()
+        .setTitle(isShiny ? "✨ ¡Un Pokémon Shiny apareció!" : "🌿 ¡Un Pokémon salvaje apareció!")
+        .setDescription("Escribe `p!catch <nombre>` para atraparlo.")
+        .setImage(image)
+        .setColor(isShiny ? 0xffd700 : 0x2ecc71)
+        .setFooter({ text: "Tienes 15 segundos para atraparlo." })
+        .setTimestamp();
 
-      // 🔥 OPCIONAL: eliminar después de 2 minutos
+      channel.send({ embeds: [embed] });
+
+      // 🔥 Expira después de 2 minutos
       setTimeout(() => {
-        const updatedSpawns = activeSpawns.get(channel.id) || [];
-        activeSpawns.set(
-          channel.id,
-          updatedSpawns.filter(p => p.spawnId !== spawnData.spawnId)
-        );
-      }, 120000); // 2 minutos
+        if (activeSpawns.get(channel.id)?.spawnId === spawnData.spawnId) {
+          activeSpawns.delete(channel.id);
+        }
+      }, 120000);
+
     });
   });
 }, 15000);
@@ -104,7 +105,7 @@ if (command === "info") {
 }
 
 if (command === "admin") {
-  return adminCommand(message, args);
+  return adminCommand(message, args, activeSpawns);
 }
 
 if (command === "balance") {
@@ -118,13 +119,24 @@ if (command === "shop") return shopCommand(message);
 if (command === "buy") return buyCommand(message, args);
 
 if (command === "hint") {
-  return hintCommand(message, activeSpawns);
+  return hintCommand(message, args, activeSpawns);
 }
 
 if (command === "missions") {
     return missionsCommand(message);
 }
 
+if (command === "find") {
+    return findCommand(message, args);
+}
+
+if (command === "market") {
+   return marketCommand(message, args);
+}
+
+if (command === "select") {
+   return selectCommand(message, args);
+}
 
 });
 
