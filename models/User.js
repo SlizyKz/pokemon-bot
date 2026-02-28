@@ -26,7 +26,13 @@ const userSchema = new mongoose.Schema({
     selectedPokemon: {
   type: String,
   default: null
+},
+
+orderPreference: {
+    type: String,
+    default: "id"
 }
 });
+
 
 module.exports = mongoose.model("User", userSchema);

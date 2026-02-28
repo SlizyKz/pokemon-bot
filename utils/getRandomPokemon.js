@@ -11,10 +11,10 @@ function getRarity(name) {
 module.exports = () => {
 
   const spawnRates = {
-    Common: 91,
-    Legendary: 5,
-    Mythical: 3,
-    "Ultra Beast": 1
+    Common: 98,
+    Legendary: 1,
+    Mythical: 0.7,
+    "Ultra Beast": 0.3
   };
 
   const random = Math.random() * 100;

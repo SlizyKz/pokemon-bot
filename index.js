@@ -15,6 +15,7 @@ const missionsCommand = require("./commands/missions");
 const findCommand = require("./commands/find");
 const marketCommand = require("./commands/market");
 const selectCommand = require("./commands/select");
+const orderCommand = require("./commands/order");
 
 require("dotenv").config();
 const { Client, GatewayIntentBits } = require("discord.js");
@@ -136,6 +137,10 @@ if (command === "market") {
 
 if (command === "select") {
    return selectCommand(message, args);
+}
+
+if (command === "order") {
+   return orderCommand(message, args);
 }
 
 });

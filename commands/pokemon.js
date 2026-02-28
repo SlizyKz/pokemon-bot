@@ -6,12 +6,30 @@ const {
 } = require("discord.js");
 
 const Pokemon = require("../models/Pokemon");
+const User = require("../models/User"); // 🔥 NUEVO
 
 module.exports = async (message) => {
 
+  // 🔥 Obtener preferencia de orden
+  const user = await User.findOne({ userId: message.author.id });
+
+  let sortOption = { pokemonId: 1 }; // Default
+
+  if (user?.orderPreference === "iv")
+    sortOption = { ivPercent: -1 };
+
+  if (user?.orderPreference === "level")
+    sortOption = { level: -1 };
+
+  if (user?.orderPreference === "newest")
+    sortOption = { pokemonId: -1 };
+
+  if (user?.orderPreference === "oldest")
+    sortOption = { pokemonId: 1 };
+
   const pokemons = await Pokemon
     .find({ ownerId: message.author.id })
-    .sort({ pokemonId: 1 });
+    .sort(sortOption);
 
   if (!pokemons.length) {
     return message.reply("❌ No tienes Pokémon capturados.");
@@ -22,26 +40,25 @@ module.exports = async (message) => {
   const totalPages = Math.ceil(pokemons.length / perPage);
 
   const generateEmbed = (page) => {
-  const start = page * perPage;
-  const current = pokemons.slice(start, start + perPage);
+    const start = page * perPage;
+    const current = pokemons.slice(start, start + perPage);
 
-  const description = current.map((p) => {
-    const shiny = p.shiny ? "✨ " : "";
+    const description = current.map((p) => {
+      const shiny = p.shiny ? "✨ " : "";
+      const name = p.name.toUpperCase();
+      const level = p.level ? `Nv.${p.level}` : "Nv.?";
+      const ivPercent = p.ivPercent ? `${p.ivPercent}%` : "0%";
 
-    const name = p.name.toUpperCase(); // 🔥 MAYÚSCULAS
-    const level = p.level ? `Nv.${p.level}` : "Nv.?";
-    const ivPercent = p.ivPercent ? `${p.ivPercent}%` : "0%";
+      return `**${p.pokemonId}.** ${shiny}**${name}** | ${level} | IV: ${ivPercent}`;
+    }).join("\n");
 
-    return `**${p.pokemonId}.** ${shiny}**${name}** | ${level} | IV: ${ivPercent}`;
-  }).join("\n");
-
-  return new EmbedBuilder()
-    .setColor(0x5865F2)
-    .setTitle(`📦 Pokémon de ${message.author.username}`)
-    .setDescription(description)
-    .setFooter({ text: `Página ${page + 1} / ${totalPages}` })
-    .setTimestamp();
-};
+    return new EmbedBuilder()
+      .setColor(0x5865F2)
+      .setTitle(`📦 Pokémon de ${message.author.username}`)
+      .setDescription(description)
+      .setFooter({ text: `Página ${page + 1} / ${totalPages}` })
+      .setTimestamp();
+  };
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
